@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using backendV03.Database;
 using BCrypt.Net;
+using backendV03.Tokens;
+using System.Threading.Tasks;
+
 
 namespace backendV03.Controllers
 {
@@ -11,11 +14,15 @@ namespace backendV03.Controllers
     public class ClienteController: ControllerBase
     {
         private readonly Conexion _context;
+        private readonly Jwt _jwt;
 
-        public ClienteController(Conexion context)
+        public ClienteController(Conexion context, Jwt jwt)
         {
             _context = context;
+            _jwt = jwt;
         }
+
+        //registro
 
         [HttpPost("registro")]
         public async Task<IActionResult> RegistroCliente([FromBody] Cliente data)
@@ -51,6 +58,7 @@ namespace backendV03.Controllers
                     Email = data.Email,
                     Password = hashedPassword,
                     Perfil = data.Perfil,
+                    rol = data.rol,
                     Telefono = data.Telefono,
                     Genero = data.Genero,
                     F_Nacimiento = data.F_Nacimiento,
@@ -70,5 +78,52 @@ namespace backendV03.Controllers
             }
         }
 
+        //Login
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto data)
+        {
+            try
+            {
+                // Verificar si el usuario existe en la base de datos
+                var user = await _context.Clientes.FirstOrDefaultAsync(u => u.Email == data.Email);
+                if (user == null)
+                {
+                    return NotFound(new { msg = "El correo no está registrado", data = (object?)null });
+                }
+
+                // Verificar la contraseña
+                if (!BCrypt.Net.BCrypt.Verify(data.Password, user.Password))
+                {
+                    return Unauthorized(new { msg = "Contraseña incorrecta", data = (object?)null });
+                }
+
+                // Generar el token
+                var token = _jwt.CreateToken(user);
+
+                // Enviar respuesta
+                return Ok(new
+                {
+                    data = new
+                    {
+                        cliente = new
+                        {
+                            user.Nombres,
+                            user.Apellidos
+                        },
+                        token
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { msg = "Error en el servidor", error = ex.Message });
+            }
+        }
+        // DTO para evitar exponer todo el modelo Cliente en la petición
+        public class LoginDto
+        {
+            public string Email { get; set; }
+            public string Password { get; set; }
+        }
     }
 }

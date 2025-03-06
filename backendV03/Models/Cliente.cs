@@ -27,7 +27,7 @@ namespace backendV03.Models
 
         [Required(ErrorMessage = "El campo Perfil es obligatorio.")]
         public string Perfil { get; set; } = "perfil.png"; // Valor por defecto
-
+        public string rol { get; set; } = "cliente";
         public string? Telefono { get; set; } // No es obligatorio (acepta valores nulos)
 
         public string? Genero { get; set; } // No es obligatorio (acepta valores nulos)
